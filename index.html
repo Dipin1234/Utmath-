@@ -1,0 +1,565 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Math Video Course</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Arial', sans-serif;
+    }
+
+    body {
+      background: linear-gradient(135deg, #cc00cc, #00cccc);
+      color: #fff;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      padding: 20px 0;
+    }
+
+    header h1 {
+      font-size: 2.5em;
+      color: #ffffff;
+      text-shadow: 0 0 10px #00ff00;
+      animation: fadeIn 1s ease-in;
+    }
+
+    .topic-section {
+      margin: 20px 0;
+      background: rgba(0, 204, 255, 0.25);
+      border-radius: 10px;
+      padding: 20px;
+      animation: slideIn 0.5s ease-out;
+      box-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
+    }
+
+    .topic-section h2 {
+      font-size: 1.8em;
+      margin-bottom: 15px;
+      color: #ffff00;
+      text-shadow: 0 0 5px #000;
+    }
+
+    .video-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+    }
+
+    .video-item {
+      background: rgba(0, 204, 255, 0.3);
+      border-radius: 8px;
+      padding: 15px;
+      transition: transform 0.3s, box-shadow 0.3s, background 0.3s;
+      cursor: pointer;
+      color: #ffffff;
+      text-shadow: 0 0 3px #000;
+    }
+
+    .video-item:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 5px 15px rgba(255, 105, 180, 0.7);
+      background: #ff69b4;
+    }
+
+    .video-item p {
+      font-size: 1.1em;
+    }
+
+    .video-player-container {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.9);
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+
+    .video-player {
+      width: 80%;
+      max-width: 800px;
+      background: #4b0082;
+      border-radius: 10px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .video-player video {
+      width: 100%;
+      display: block;
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      background: #1c2526;
+      padding: 10px;
+      gap: 10px;
+    }
+
+    .controls button, .controls select {
+      background: #00ff00;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 5px;
+      cursor: pointer;
+      color: #ffffff;
+      font-weight: bold;
+      transition: background 0.3s;
+    }
+
+    .controls button:hover, .controls select:hover {
+      background: #00cc00;
+    }
+
+    .controls .progress {
+      flex: 1;
+      height: 10px;
+      background: #555;
+      border-radius: 5px;
+      overflow: hidden;
+      cursor: pointer;
+    }
+
+    .controls .progress-bar {
+      width: 0;
+      height: 100%;
+      background: #00ff00;
+      transition: width 0.1s;
+    }
+
+    .volume-control {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      color: #ffffff;
+    }
+
+    .volume-control input {
+      width: 80px;
+      accent-color: #00ff00;
+    }
+
+    .close-player {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: #ff4500;
+      color: #ffffff;
+      border: none;
+      padding: 8px;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes slideIn {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    @media (max-width: 600px) {
+      .video-player {
+        width: 95%;
+      }
+      .controls {
+        flex-wrap: wrap;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Math Video Course</h1>
+    </header>
+
+    <div class="topic-section">
+      <h2>Number System</h2>
+      <div class="video-list" data-topic="Number System">
+        <div class="video-item" data-id="1860315">Video 1</div>
+        <div class="video-item" data-id="1862182">Video 2</div>
+      </div>
+    </div>
+
+    <div class="topic-section">
+      <h2>Ratio Proportion</h2>
+      <div class="video-list" data-topic="Ratio Proportion">
+        <div class="video-item" data-id="1864008">Video 1</div>
+        <div class="video-item" data-id="1865496">Video 2</div>
+        <div class="video-item" data-id="1866760">Video 3</div>
+        <div class="video-item" data-id="1868703">Video 4</div>
+        <div class="video-item" data-id="1869772">Video 5</div>
+        <div class="video-item" data-id="1871151">Video 6</div>
+      </div>
+    </div>
+
+    <div class="topic-section">
+      <h2>Percentage</h2>
+      <div class="video-list" data-topic="Percentage">
+        <div class="video-item" data-id="1872828">Video 1</div>
+        <div class="video-item" data-id="1874351">Video 2</div>
+        <div class="video-item" data-id="1875846">Video 3</div>
+        <div class="video-item" data-id="1877847">Video 4</div>
+        <div class="video-item" data-id="1879467">Video 5</div>
+        <div class="video-item" data-id="1880471">Video 6</div>
+      </div>
+    </div>
+
+    <div class="topic-section">
+      <h2>Profit Loss</h2>
+      <div class="video-list" data-topic="Profit Loss">
+        <div class="video-item" data-id="1882032">Video 1</div>
+        <div class="video-item" data-id="1883710">Video 2</div>
+        <div class="video-item" data-id="1885180">Video 3</div>
+        <div class="video-item" data-id="1885757">Video 4</div>
+        <div class="video-item" data-id="1889273">Video 5</div>
+        <div class="video-item" data-id="1890276">Video 6</div>
+      </div>
+    </div>
+
+    <div class="topic-section">
+      <h2>Simple Interest</h2>
+      <div class="video-list" data-topic="Simple Interest">
+        <div class="video-item" data-id="1891747">Video 1</div>
+        <div class="video-item" data-id="1893439">Video 2</div>
+        <div class="video-item" data-id="1894897">Video 3</div>
+        <div class="video-item" data-id="1895542">Video 4</div>
+      </div>
+    </div>
+
+    <div class="topic-section">
+      <h2>Compound Interest</h2>
+      <div class="video-list" data-topic="Compound Interest">
+        <div class="video-item" data-id="1896788">Video 1</div>
+        <div class="video-item" data-id="1898352">Video 2</div>
+        <div class="video-item" data-id="1899699">Video 3</div>
+        <div class="video-item" data-id="1902250">Video 4</div>
+        <div class="video-item" data-id="1903340">Video 5</div>
+      </div>
+    </div>
+
+    <div class="topic-section">
+      <h2>Average</h2>
+      <div class="video-list" data-topic="Average">
+        <div class="video-item" data-id="1904271">Video 1</div>
+        <div class="video-item" data-id="1905491">Video 2</div>
+        <div class="video-item" data-id="1916690">Video 3</div>
+        <div class="video-item" data-id="1918263">Video 4</div>
+      </div>
+    </div>
+
+    <div class="topic-section">
+      <h2>Unitary Method</h2>
+      <div class="video-list" data-topic="Unitary Method">
+        <div class="video-item" data-id="1959620">Video 1</div>
+      </div>
+    </div>
+
+    <div class="topic-section">
+      <h2>Mensuration</h2>
+      <div class="video-list" data-topic="Mensuration">
+        <div class="video-item" data-id="1960519">Video 1</div>
+        <div class="video-item" data-id="1961634">Video 2</div>
+        <div class="video-item" data-id="1963448">Video 3</div>
+        <div class="video-item" data-id="1969281">Video 4</div>
+        <div class="video-item" data-id="1970600">Video 5</div>
+        <div class="video-item" data-id="1972157">Video 6</div>
+        <div class="video-item" data-id="1973962">Video 7</div>
+        <div class="video-item" data-id="1975364">Video 8</div>
+        <div class="video-item" data-id="1975714">Video 9</div>
+        <div class="video-item" data-id="1976716">Video 10</div>
+        <div class="video-item" data-id="1979314">Video 11</div>
+        <div class="video-item" data-id="1985508">Video 12</div>
+        <div class="video-item" data-id="1988732">Video 13</div>
+      </div>
+    </div>
+
+    <div class="topic-section">
+      <h2>MCQ</h2>
+      <div class="video-list" data-topic="MCQ">
+        <div class="video-item" data-id="2151329">Video 1</div>
+        <div class="video-item" data-id="2151330">Video 2</div>
+        <div class="video-item" data-id="2153042">Video 3</div>
+        <div class="video-item" data-id="2154141">Video 4</div>
+        <div class="video-item" data-id="2154142">Video 5</div>
+        <div class="video-item" data-id="2154143">Video 6</div>
+        <div class="video-item" data-id="2242600">Video 7</div>
+        <div class="video-item" data-id="2242601">Video 8</div>
+      </div>
+    </div>
+
+    <div class="video-player-container" id="videoPlayerContainer">
+      <div class="video-player">
+        <video id="videoElement" castable></video>
+        <button class="close-player" onclick="closeVideoPlayer()">X</button>
+        <div class="controls">
+          <button onclick="togglePlay()">Play</button>
+          <div class="progress" onclick="seekVideo(event)">
+            <div class="progress-bar" id="progressBar"></div>
+          </div>
+          <div class="volume-control">
+            <label>Volume:</label>
+            <input type="range" id="volume" min="0" max="1" step="0.1" value="1" oninput="setVolume(this.value)">
+          </div>
+          <select id="playbackSpeed" onchange="setPlaybackSpeed(this.value)">
+            <option value="0.5">0.5x</option>
+            <option value="1" selected>1x</option>
+            <option value="1.5">1.5x</option>
+            <option value="2">2x</option>
+            <option value="3">3x</option>
+            <option value="4">4x</option>
+          </select>
+          <button onclick="toggleFullscreen()">Fullscreen</button>
+          <button id="castButton" onclick="toggleCast()">Cast</button>
+        </div>
+      </div>
+    </div>
+  </div>
+<script>
+  const videoPlayerContainer = document.getElementById('videoPlayerContainer');
+  const videoElement = document.getElementById('videoElement');
+  const progressBar = document.getElementById('progressBar');
+  const castButton = document.getElementById('castButton');
+  let isDragging = false;
+
+  function openVideoPlayer(videoId) {
+    const videoUrl = `https://apps-s3-jw-prod.utkarshapp.com/admin_v1/file_library/videos/enc_plain_mp4/${videoId}/plain/720x1280.mp4`;
+    videoElement.src = videoUrl;
+    videoPlayerContainer.style.display = 'flex';
+    videoElement.play().catch(error => console.error('Video play failed:', error));
+    updateCastButton();
+  }
+
+  function closeVideoPlayer() {
+    videoElement.pause();
+    videoElement.src = '';
+    videoPlayerContainer.style.display = 'none';
+    stopCasting();
+  }
+
+  function togglePlay() {
+    if (videoElement.paused) {
+      videoElement.play().catch(error => console.error('Video play failed:', error));
+      event.target.textContent = 'Pause';
+    } else {
+      videoElement.pause();
+      event.target.textContent = 'Play';
+    }
+  }
+
+  function setVolume(value) {
+    videoElement.volume = value;
+  }
+
+  function setPlaybackSpeed(value) {
+    videoElement.playbackRate = parseFloat(value);
+  }
+
+  function toggleFullscreen() {
+    if (!document.fullscreenEnabled && !document.webkitFullscreenEnabled && !document.mozFullScreenEnabled && !document.msFullscreenEnabled) {
+      console.warn('Fullscreen is not supported in this browser.');
+      return;
+    }
+
+    if (!document.fullscreenElement && !document.webkitFullscreenElement && !document.mozFullScreenElement && !document.msFullscreenElement) {
+      const fullscreenElement = videoElement;
+      if (fullscreenElement.requestFullscreen) {
+        fullscreenElement.requestFullscreen().catch(error => {
+          console.warn('Fullscreen request failed:', error.message);
+        });
+      } else if (fullscreenElement.webkitRequestFullscreen) {
+        fullscreenElement.webkitRequestFullscreen().catch(error => {
+          console.warn('Fullscreen request failed:', error.message);
+        });
+      } else if (fullscreenElement.mozRequestFullScreen) {
+        fullscreenElement.mozRequestFullScreen().catch(error => {
+          console.warn('Fullscreen request failed:', error.message);
+        });
+      } else if (fullscreenElement.msRequestFullscreen) {
+        fullscreenElement.msRequestFullscreen().catch(error => {
+          console.warn('Fullscreen request failed:', error.message);
+        });
+      }
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen().catch(error => {
+          console.warn('Exiting fullscreen failed:', error.message);
+        });
+      } else if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen().catch(error => {
+          console.warn('Exiting fullscreen failed:', error.message);
+        });
+      } else if (document.mozCancelFullScreen) {
+        document.mozCancelFullScreen().catch(error => {
+          console.warn('Exiting fullscreen failed:', error.message);
+        });
+      } else if (document.msExitFullscreen) {
+        document.msExitFullscreen().catch(error => {
+          console.warn('Exiting fullscreen failed:', error.message);
+        });
+      }
+    }
+  }
+
+  function seekVideo(event) {
+    const progress = event.currentTarget;
+    const rect = progress.getBoundingClientRect();
+    const pos = (event.clientX - rect.left) / rect.width;
+    videoElement.currentTime = pos * videoElement.duration;
+  }
+
+  // Casting functionality
+  let castSession = null;
+
+  function updateCastButton() {
+    if ('cast' in window && window.cast) {
+      castButton.style.display = 'block';
+      castButton.textContent = castSession ? 'Stop Casting' : 'Cast';
+    } else {
+      castButton.style.display = 'none';
+    }
+  }
+
+  async function toggleCast() {
+    try {
+      if (!window.cast) {
+        console.warn('Casting is not supported in this browser.');
+        return;
+      }
+
+      if (castSession) {
+        stopCasting();
+        return;
+      }
+
+      const castContext = cast.framework.CastContext.getInstance();
+      castContext.setOptions({
+        receiverApplicationId: chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID,
+        autoJoinPolicy: chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED
+      });
+
+      await castContext.requestSession();
+      castSession = castContext.getCurrentSession();
+      if (castSession) {
+        const mediaInfo = new chrome.cast.media.MediaInfo(videoElement.src, 'video/mp4');
+        const request = new chrome.cast.media.LoadRequest(mediaInfo);
+        await castSession.loadMedia(request);
+        castButton.textContent = 'Stop Casting';
+      }
+    } catch (error) {
+      console.error('Casting failed:', error);
+    }
+  }
+
+  function stopCasting() {
+    if (castSession) {
+      castSession.endSession(true);
+      castSession = null;
+      castButton.textContent = 'Cast';
+    }
+  }
+
+  videoElement.addEventListener('timeupdate', () => {
+    if (!isDragging) {
+      const progress = (videoElement.currentTime / videoElement.duration) * 100;
+      progressBar.style.width = `${progress}%`;
+    }
+  });
+
+  document.querySelectorAll('.video-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const videoId = item.getAttribute('data-id');
+      openVideoPlayer(videoId);
+    });
+  });
+
+  // Handle progress bar dragging
+  progressBar.parentElement.addEventListener('mousedown', () => {
+    isDragging = true;
+  });
+
+  document.addEventListener('mouseup', () => {
+    isDragging = false;
+  });
+
+  document.addEventListener('mousemove', (event) => {
+    if (isDragging) {
+      const progress = progressBar.parentElement;
+      const rect = progress.getBoundingClientRect();
+      const pos = Math.min(Math.max((event.clientX - rect.left) / rect.width, 0), 1);
+      videoElement.currentTime = pos * videoElement.duration;
+      progressBar.style.width = `${pos * 100}%`;
+    }
+  });
+
+  // Initialize cast framework
+  if (window.cast && window.cast.framework) {
+    window['__onGCastApiAvailable'] = (isAvailable) => {
+      if (isAvailable) {
+        updateCastButton();
+      }
+    };
+  }
+</script>
+</body>
+</html>
